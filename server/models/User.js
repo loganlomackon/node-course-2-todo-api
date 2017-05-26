@@ -3,23 +3,24 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 
-var UserSchema = mongoose.Schema({
+var UserSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
     minlength: 1,
     trim: true,
-    unique: true,
+    unique: true
     //mongoose: custom validators
-    validate: {
-      validator: validator.isEmail,
-      message: '{VALUE} is not a valid email'
-    }
+    // validate: {
+    //   isAsync: true,
+    //   validator: validator.isEmail,
+    //   message: '{VALUE} is not a valid email'
+    // }
   },
   password: {
     type: String,
     required: true,
-    minLength: 6
+    minlength: 6
   },
   tokens: [{
     access: {
@@ -36,7 +37,7 @@ var UserSchema = mongoose.Schema({
 //Override toJSON response
 UserSchema.methods.toJSON = function () {
   var user = this;
-  var userObj = new user.toObject();
+  var userObj = user.toObject();
 
   return _.pick(userObj, ['_id', 'email']);
 };
@@ -51,6 +52,26 @@ UserSchema.methods.generateAuthToken = function () {
 
   return user.save().then(() => {
     return token;
+  });
+};
+
+UserSchema.statics.findByToken = function (token) {
+  var User = this;
+  var decoded;
+
+  try {
+    decoded = jwt.verify(token, 'abc123');
+  } catch (e) {
+    // return new Promise((resolve, reject) => {
+    //   reject();
+    // });
+    return Promise.reject()
+  }
+
+  return User.findOne({
+    _id: decoded._id,
+    'tokens.token': token,
+    'tokens.access': 'auth'
   });
 };
 
